@@ -1,65 +1,83 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import { useEffect } from 'react';
+// import Head from 'next/head';
+// import styles from '../styles/Home.module.css';
+import { signIn, signOut, useSession } from 'next-auth/client';
+import io from 'socket.io-client';
+import { useRouter } from 'next/router';
+import { Layout } from '../components';
 
 export default function Home() {
+  const router = useRouter();
+  const [session, loading] = useSession();
+  const socket = io({
+    autoConnect: false,
+  });
+
+  useEffect(() => {
+    if (session) {
+      socket.connect();
+      socket.on('now', (message) => {
+        // console.log('message', message);
+      });
+      socket.emit('signIn', session);
+      router.push('/rooms');
+    }
+  }, [session]);
+
+  const googleSignIn = async () => {
+    await signIn();
+    router.push('/rooms');
+  };
+  const googleSignOut = () => {
+    signOut();
+    console.log(session, 'dari logout');
+  };
+
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+    // <div className={styles.container}>
+    <Layout title="Welcome to Ngobrol">
+      <div className="bg-primary w-full h-20 flex justify-center">
+        <span className="text-3xl font-black font-custom text-bg pt-2">
+          ngobrol
+        </span>
+      </div>
+      <div
+        className="relative bg-bg w-full rounded-t-2xl 
+                  -top-5 flex flex-col 
+                  items-center justify-center
+                  overflow-hidden h-52"
+      >
+        <img src="/hero.jpg" alt="" className="onject-cover" />
+      </div>
+      <div className="py-4 flex flex-col items-center">
+        <span className="text-lg font-custom">Welcome to ngobrol chat app</span>
+        <span className="text-lg font-custom">please sign in to continue</span>
+      </div>
+      {!session ? (
+        <button
+          className="flex flex-row gap-3 py-2 justify-center bg-gray-900 w-2/3 font-custom text-white px-3 rounded text-sm focus:outline-none shadow"
+          onClick={() => googleSignIn()}
         >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
-    </div>
-  )
+          <img src="/google.png" className="w-6 h-6" alt="google logo" />
+          Sign In with Google
+        </button>
+      ) : (
+        <button
+          className="flex flex-row gap-3 py-2 justify-center bg-gray-900 w-2/3 font-custom text-white px-3 rounded text-sm focus:outline-none shadow"
+          onClick={() => googleSignOut()}
+        >
+          <img src="/google.png" className="w-6 h-6" alt="google logo" />
+          Sign Out with Google
+        </button>
+      )}
+      <div className="bg-primary w-full h-16 flex justify-center absolute bottom-0">
+        <div
+          className="relative bg-bg w-full rounded-b-2xl 
+                  top-0 flex flex-col 
+                  items-center justify-center
+                  overflow-hidden h-5"
+        ></div>
+      </div>
+    </Layout>
+  );
 }

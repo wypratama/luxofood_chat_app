@@ -11,9 +11,29 @@ app.prepare().then(() => {
   const server = express();
   const setServer = require('http').Server(server);
   const io = require('socket.io')(setServer);
+  const router = require('./server/routes');
+  const Controller = require('./server/controllers');
 
   server.use(bodyParser.urlencoded({ extended: true }));
   server.use(bodyParser.json());
+
+  io.on('connection', (socket) => {
+    // console.log('socket', socket);
+
+    socket.on('signIn', Controller.userSignIn);
+    socket.on('join', (data) => {
+      Controller.joinRoom(data, socket);
+    });
+    socket.on('chatMessage', (data) => {
+      Controller.sendChat(data, io, socket);
+    });
+
+    socket.emit('now', {
+      message: 'zeit',
+    });
+  });
+
+  server.use('/api', router);
 
   server.all('*', (req, res) => {
     return handle(req, res);
