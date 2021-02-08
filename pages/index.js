@@ -25,8 +25,8 @@ export default function Home() {
   }, [session]);
 
   const googleSignIn = async () => {
-    await signIn();
-    router.push('/rooms');
+    await signIn('google', { callbackUrl: '/rooms' });
+    // router.push('/rooms');
   };
   const googleSignOut = () => {
     signOut();

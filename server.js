@@ -20,12 +20,37 @@ app.prepare().then(() => {
   io.on('connection', (socket) => {
     // console.log('socket', socket);
 
-    socket.on('signIn', Controller.userSignIn);
-    socket.on('join', (data) => {
-      Controller.joinRoom(data, socket);
+    socket.on('signIn', (data) => {
+      Controller.userSignIn(data, socket);
     });
-    socket.on('chatMessage', (data) => {
-      Controller.sendChat(data, io, socket);
+    socket.on('join', (data) => {
+      Controller.joinRoom(data, socket, io);
+    });
+    socket.on('chatMessage', ({ msg, user, room }) => {
+      const trimmedRoom = room.trim().toLowerCase();
+      io.to(trimmedRoom).emit('message', { msg, user });
+    });
+
+    socket.on('disconnectRoom', ({ user, room }, callback) => {
+      Controller.leaveRoom({ user, room }, callback, io, socket);
+    });
+
+    socket.on('reload', (callback) => {
+      if (callback) {
+        callback();
+      }
+      socket.broadcast.emit('triggerReload');
+    });
+
+    socket.on('justAdd', ({ room, user }) => {
+      socket.broadcast.emit('alert', {
+        msg: `added room ${room}`,
+        user: user,
+      });
+    });
+
+    socket.on('deleteRoom', ({ room, user }) => {
+      Controller.deleteRoom({ room, user }, io, socket);
     });
 
     socket.emit('now', {

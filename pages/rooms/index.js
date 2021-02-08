@@ -1,25 +1,48 @@
-import { useEffect } from 'react';
-import { Layout, RoomCard } from '../../components';
-import useSWR from 'swr';
+import { useEffect, useState } from 'react';
+import { Layout, RoomCard, Toast, AddRoom, ErrorModal } from '../../components';
+import useSWR, { trigger } from 'swr';
 import { signOut, useSession } from 'next-auth/client';
 import { useRouter } from 'next/router';
+import io from 'socket.io-client';
 
 export default function Roomlist() {
   const router = useRouter();
   const fetcher = (...args) => fetch(...args).then((res) => res.json());
   const { data, error } = useSWR('/api/rooms', fetcher);
   const [session, loading] = useSession();
+  const [alert, setAlert] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  const [onAdd, setOnAdd] = useState(false);
+  const [onError, setOnError] = useState(null);
+  const socket = io({
+    autoConnect: false,
+  });
+
   useEffect(() => {
     if (!session) {
       router.push('/');
+    } else {
+      socket.connect();
     }
+
+    return () => socket.disconnect();
   }, [session]);
 
   const googleSignOut = () => {
     signOut();
-    router.push('/');
-    console.log(session, 'dari logout');
   };
+  socket.on('alert', (data) => {
+    setAlert(data);
+    setTimeout(() => {
+      setAlert(null);
+    }, 3000);
+    setAlerts((alerts) => [...alerts, data]);
+  });
+
+  socket.on('triggerReload', () => {
+    console.log('triggered');
+    trigger('/api/rooms');
+  });
 
   if (error) return <div>Error...!!</div>;
   if (loading) return <div>Loading...!!</div>;
@@ -36,11 +59,22 @@ export default function Roomlist() {
                   items-center justify-center
                   overflow-hidden h-5"
       ></div>
+      <span className="text-2xl font-custom font-bold text-primary">
+        select room:
+      </span>
       <div className="bg-bg flex w-full items-center justify-center font-custom text-sm">
         <ul className="flex flex-col p-4 gap-2">
-          {data &&
+          {data?.rooms &&
+            session &&
             data.rooms.map((el, i) => {
-              return <RoomCard el={el} key={i} user={session.user} />;
+              return (
+                <RoomCard
+                  el={el}
+                  key={i}
+                  user={session.user}
+                  setOnError={setOnError}
+                />
+              );
             })}
         </ul>
       </div>
@@ -52,20 +86,11 @@ export default function Roomlist() {
                   overflow-hidden h-5"
         ></div>
         <div className="flex flex-row justify-around text-bg pb-2">
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-            />
-          </svg>
+          <img
+            src={session.user.image}
+            alt=""
+            className="w-6 h-6 rounded-full"
+          />
 
           <svg
             className="w-6 h-6"
@@ -73,6 +98,9 @@ export default function Roomlist() {
             stroke="currentColor"
             viewBox="0 0 24 24"
             xmlns="http://www.w3.org/2000/svg"
+            onClick={() => {
+              setOnAdd(!onAdd);
+            }}
           >
             <path
               strokeLinecap="round"
@@ -99,6 +127,9 @@ export default function Roomlist() {
           </svg>
         </div>
       </div>
+      {alert && <Toast alert={alert} />}
+      {onAdd && <AddRoom setOnAdd={setOnAdd} user={session.user} />}
+      {onError && <ErrorModal onError={onError} />}
     </Layout>
   );
 }

@@ -1,11 +1,1 @@
-[
-  {
-    "name": "Santai"
-  },
-  {
-    "name": "Kerja"
-  },
-  {
-    "name": "Bantu saya"
-  }
-]
+[{"name":"Santai","users":[]},{"name":"Kerja","users":[]},{"name":"Bantu saya","users":[]}]

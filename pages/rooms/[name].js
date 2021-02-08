@@ -1,11 +1,10 @@
 import { signIn, signOut, useSession } from 'next-auth/client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import { useRouter } from 'next/router';
 
 export default function Chatroom() {
-  // const el = document.getElementById('messages');
-  // el.scrollTop = el.scrollHeight;
+  const messageEl = useRef(null);
   const router = useRouter();
   const [session, loading] = useSession();
   const [input, setInput] = useState('');
@@ -13,42 +12,85 @@ export default function Chatroom() {
   const socket = io({
     autoConnect: false,
   });
+  const doSignOut = async () => {
+    socket.connect();
+    await socket.emit(
+      'disconnectRoom',
+      {
+        user: session.user,
+        room: router.query.name,
+      },
+      () => {
+        signOut();
+      }
+    );
+  };
+  const backToBoard = async () => {
+    socket.connect();
+    await socket.emit(
+      'disconnectRoom',
+      {
+        user: session.user,
+        room: router.query.name,
+      },
+      () => {
+        router.push('/rooms');
+      }
+    );
+  };
 
   useEffect(() => {
-    socket.connect();
+    if (messageEl) {
+      messageEl.current.addEventListener('DOMNodeInserted', (event) => {
+        const { currentTarget: target } = event;
+        target.scroll({ top: target.scrollHeight, behavior: 'smooth' });
+      });
+    }
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      socket.connect();
+      socket.emit('join', { room: router.query.name, user: session.user });
+    } else {
+      router.push('/');
+    }
+    return () => {
+      if (session) {
+        socket.emit(
+          'disconnectRoom',
+          {
+            user: session.user,
+            room: router.query.name,
+          },
+          () => {
+            socket.disconnect();
+          }
+        );
+      }
+    };
+  }, [session]);
   const sendMessage = (e) => {
     e.preventDefault();
-    // if (e.key === 'Enter') {
-    socket.connect();
-    socket.emit('chatMessage', {
-      msg: input,
-      user: session.user,
-      room: router.query.name,
-    });
-    setInput('');
-    // }
+    if (input) {
+      socket.connect();
+      socket.emit('chatMessage', {
+        msg: input,
+        user: session.user,
+        room: router.query.name,
+      });
+      setInput('');
+    }
   };
   socket.on('message', (data) => {
-    console.log(data, 'message sampai room');
-    setMessages([...messages, data]);
+    console.log(messages);
+    setMessages((messages) => [...messages, data]);
   });
 
-  useEffect(() => {
-    // socket.connect();
-    socket.on('now', (message) => {
-      console.log('message', message);
-    });
-    socket.on('message', (data) => {
-      console.log(data, 'message sampai room');
-      setMessages([...messages, data]);
-    });
-  }, []);
-
   return (
-    <div className="flex-1 p:2 sm:p-6 justify-between flex flex-col h-screen">
-      <div className="flex sm:items-center justify-between py-3 border-b-2 border-gray-200">
-        <div className="flex items-center space-x-4">
+    <div className="flex-1 p:2 sm:p-6 justify-between flex flex-col h-screen bg-bg">
+      <div className="flex sm:items-center justify-between py-3 px-2 border-b-2 border-gray-300">
+        <div className="flex items-center gap-x-4">
           {session && (
             <img
               src={session.user.image}
@@ -56,120 +98,128 @@ export default function Chatroom() {
               className="w-10 sm:w-16 h-10 sm:h-16 rounded-full"
             />
           )}
-          <div className="flex flex-col leading-tight">
-            <div className="text-2xl mt-1 flex items-center">
-              <span className="text-gray-700 mr-3">aa</span>
-              <span className="text-green-500">
+          <div className="font-custom flex flex-col leading-tight">
+            <div className="flex items-center">
+              <span className="text-sm text-gray-700 mr-3">
+                {session?.user.name}
+              </span>
+              {/* <span className="text-green-500">
                 <svg width="10" height="10">
                   <circle cx="5" cy="5" r="5" fill="currentColor"></circle>
                 </svg>
-              </span>
+              </span> */}
             </div>
-            <span className="text-sm text-gray-600">Junior Developer</span>
+            <span className="text-sm text-gray-600">
+              {router.query.name}'s room
+            </span>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <button
             type="button"
+            onClick={backToBoard}
             className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-300 focus:outline-none"
           >
             <svg
-              xmlns="http://www.w3.org/2000/svg"
+              className="w-6 h-6"
               fill="none"
-              viewBox="0 0 24 24"
               stroke="currentColor"
-              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              ></path>
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </button>
           <button
             type="button"
+            onClick={doSignOut}
             className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-300 focus:outline-none"
           >
             <svg
-              xmlns="http://www.w3.org/2000/svg"
+              className="w-6 h-6"
               fill="none"
-              viewBox="0 0 24 24"
               stroke="currentColor"
-              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              ></path>
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full h-10 w-10 transition duration-500 ease-in-out text-gray-500 hover:bg-gray-300 focus:outline-none"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              className="h-6 w-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              ></path>
+                strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
             </svg>
           </button>
         </div>
       </div>
       <div
         id="messages"
+        ref={messageEl}
         className="flex flex-col space-y-4 p-3 overflow-y-auto scrollbar-thumb-blue scrollbar-thumb-rounded scrollbar-track-blue-lighter scrollbar-w-2 scrolling-touch h-full justify-start"
       >
-        {/* {messages[0] && messages.map((el, i) => {
-            if (el.user.email)
-        })} */}
-        <div className="chat-message">
-          <div className="flex items-end">
-            <div className="flex flex-col space-y-2 text-xs max-w-xs mx-2 order-2 items-start">
-              <div>
-                <span className="px-4 py-2 rounded-lg inline-block rounded-bl-none bg-gray-300 text-gray-600">
-                  Can be verified on any platform using docker
-                </span>
-              </div>
-            </div>
-            <img
-              src="https://images.unsplash.com/photo-1549078642-b2ba4bda0cdb?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=facearea&amp;facepad=3&amp;w=144&amp;h=144"
-              alt="My profile"
-              className="w-6 h-6 rounded-full order-1"
-            />
-          </div>
-        </div>
-        <div className="chat-message">
-          <div className="flex items-end justify-end">
-            <div className="flex flex-col space-y-2 text-xs max-w-xs mx-2 order-1 items-end">
-              <div>
-                <span className="px-4 py-2 rounded-lg inline-block rounded-br-none bg-blue-600 text-white ">
-                  Your error message says permission denied, npm global installs
-                  must be given root privileges.
-                </span>
-              </div>
-            </div>
-            <img
-              src="https://images.unsplash.com/photo-1590031905470-a1a1feacbb0b?ixlib=rb-1.2.1&amp;ixid=eyJhcHBfaWQiOjEyMDd9&amp;auto=format&amp;fit=facearea&amp;facepad=3&amp;w=144&amp;h=144"
-              alt="My profile"
-              className="w-6 h-6 rounded-full order-2"
-            />
-          </div>
-        </div>
+        {messages[0] &&
+          messages.map((el, i) => {
+            if (el.user.name === 'admin') {
+              return (
+                <div className="chat-message" key={i}>
+                  <div className="flex items-end justify-center">
+                    <div className="flex flex-col space-y-2 text-xs max-w-xs mx-2 order-1 items-end">
+                      <div>
+                        <span className="px-2 py-1 rounded-md inline-block text-gray-400 ">
+                          {el.msg}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            } else if (el.user.email === session.user.email) {
+              return (
+                <div className="chat-message" key={i}>
+                  <div className="flex items-end justify-end">
+                    <div className="flex flex-col space-y-2 text-xs max-w-xs mx-2 order-1 items-end">
+                      <div>
+                        <span className="px-4 py-2 rounded-lg inline-block rounded-br-none bg-primary text-white ">
+                          {el.msg}
+                        </span>
+                      </div>
+                    </div>
+                    <img
+                      src={el.user.image}
+                      alt="My profile"
+                      className="w-6 h-6 rounded-full order-2"
+                    />
+                  </div>
+                </div>
+              );
+            } else {
+              return (
+                <div className="chat-message" key={i}>
+                  <div className="flex items-end">
+                    <div className="flex flex-col space-y-2 text-xs max-w-xs mx-2 order-2 items-start">
+                      <div>
+                        <span className="px-4 py-2 rounded-lg inline-block rounded-bl-none bg-gray-300 text-gray-600">
+                          {el.msg}
+                        </span>
+                      </div>
+                    </div>
+                    <img
+                      src={el.user.image}
+                      alt="My profile"
+                      className="w-6 h-6 rounded-full order-1"
+                    />
+                  </div>
+                </div>
+              );
+            }
+          })}
       </div>
-      <div className="border-t-2 border-gray-200 px-4 pt-4 mb-2 sm:mb-0">
+      <div className="border-t-2 border-gray-300 px-4 pt-4 mb-2 sm:mb-0">
         <div className="relative flex">
           <span className="absolute inset-y-0 flex items-center right-0">
             <button
@@ -193,7 +243,9 @@ export default function Chatroom() {
             onChange={(e) => {
               setInput(e.target.value);
             }}
-            // onKeyPress={(e) => {}}
+            onKeyPress={(e) => {
+              e.key === 'Enter' && sendMessage(e);
+            }}
             value={input}
             className="w-full focus:outline-none focus:placeholder-gray-400 text-gray-600 placeholder-gray-600 pl-12 bg-gray-200 rounded-full py-3"
           />

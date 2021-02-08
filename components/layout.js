@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { cloneElement } from 'react';
 
 export default function Layout({
   children,
