@@ -9,27 +9,34 @@ export default function AddRoom({ setOnAdd, user }) {
   const [input, setInput] = useState('');
   const [error, setError] = useState(null);
   const postRoom = async () => {
-    const data = await fetch('/api/rooms', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name: input, createdBy: user.email, users: [] }),
-    });
-    const parsed = await data.json();
-    if (parsed.error) {
-      setError(parsed.error);
+    if (!input) {
+      setError(`name can't be empty`);
       setTimeout(() => {
         setError(null);
       }, 2500);
     } else {
-      socket.connect();
-      socket.emit('reload', () => {
-        socket.emit('justAdd', { room: input, user: user });
+      const data = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: input, createdBy: user.email, users: [] }),
       });
-      trigger('/api/rooms');
-      setOnAdd(false);
+      const parsed = await data.json();
+      if (parsed.error) {
+        setError(parsed.error);
+        setTimeout(() => {
+          setError(null);
+        }, 2500);
+      } else {
+        socket.connect();
+        socket.emit('reload', () => {
+          socket.emit('justAdd', { room: input, user: user });
+        });
+        trigger('/api/rooms');
+        setOnAdd(false);
+      }
     }
   };
 
