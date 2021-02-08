@@ -45,7 +45,7 @@ export default function Home() {
         className="relative bg-bg w-full rounded-t-2xl 
                   -top-5 flex flex-col 
                   items-center justify-center
-                  overflow-hidden h-52"
+                  overflow-hidden h-52 sm:h-96"
       >
         <img src="/hero.jpg" alt="" className="onject-cover" />
       </div>
