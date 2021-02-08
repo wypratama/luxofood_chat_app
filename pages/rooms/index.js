@@ -44,7 +44,7 @@ export default function Roomlist() {
     trigger('/api/rooms');
   });
 
-  if (error) return <div>Error...!!</div>;
+  if (error) return <div>{JSON.stringify(error)}</div>;
   if (loading) return <div>Loading...!!</div>;
   return (
     <Layout title="Ngobrol Room List">
