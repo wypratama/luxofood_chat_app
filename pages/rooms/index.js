@@ -86,11 +86,13 @@ export default function Roomlist() {
                   overflow-hidden h-5"
         ></div>
         <div className="flex flex-row justify-around text-bg pb-2">
-          <img
-            src={session.user.image}
-            alt=""
-            className="w-6 h-6 rounded-full"
-          />
+          {session && (
+            <img
+              src={session.user.image}
+              alt=""
+              className="w-6 h-6 rounded-full"
+            />
+          )}
 
           <svg
             className="w-6 h-6"
